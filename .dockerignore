@@ -1,0 +1,7 @@
+.venv/
+.git/
+docker-compose.yaml
+AGENTS.md
+extra/vllm/build
+extra/vllm/.deps
+extra/vllm/**/__
