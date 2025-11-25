@@ -139,7 +139,14 @@ def generate_predictions(
     predictions = {}
     failed_samples = []
 
-    print(f"Generating predictions for {len(data)} samples...")
+    # White noise 파일 경로 설정
+    white_noise_path = "white-noise-358382.mp3"
+    if not os.path.exists(white_noise_path):
+        raise FileNotFoundError(f"White noise file not found: {white_noise_path}")
+
+    print(
+        f"Generating predictions for {len(data)} samples using white noise file: {white_noise_path}"
+    )
 
     # if not os.path.exists(infer_script_path):
     #     raise FileNotFoundError(f"Inference script not found at {infer_script_path}. Please provide correct path.")
@@ -150,7 +157,10 @@ def generate_predictions(
                 {
                     "role": "user",
                     "content": [
-                        {"type": "audio", "audio": info["audio_path"]},
+                        {
+                            "type": "audio",
+                            "audio": white_noise_path,
+                        },  # 실제 오디오 대신 white noise 파일 사용
                         {"type": "text", "text": prompt},
                     ],
                 }
@@ -159,7 +169,7 @@ def generate_predictions(
             predictions[audio_file] = text_out
 
             print("[DEBUG] conversation:", conversation)
-            print("[DEBUG] audio path:", info["audio_path"])
+            print("[DEBUG] audio path:", white_noise_path)  # white noise 경로로 변경
             print("[DEBUG] answer:", info["references"][0])
             print("[DEBUG] text_out:", text_out, "\n")
 

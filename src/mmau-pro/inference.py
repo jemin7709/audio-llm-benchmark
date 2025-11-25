@@ -225,6 +225,13 @@ def generate_responses_with_audio(
 
     df = df.iloc[:num_samples].copy()
 
+    # White noise 파일 경로 설정
+    white_noise_path = "white-noise-358382.mp3"
+    if not os.path.exists(white_noise_path):
+        raise FileNotFoundError(f"White noise file not found: {white_noise_path}")
+
+    print(f"Using white noise file for all samples: {white_noise_path}")
+
     outputs: List[str] = []
     debug_records: List[Dict[str, Any]] = []
     for idx in tqdm(range(num_samples), desc="Generating", ncols=100):
@@ -253,6 +260,7 @@ def generate_responses_with_audio(
             else:
                 audio_src = os.path.join(base_dir, ap_norm) if base_dir else ap_norm
 
+        audio_src = white_noise_path
         conversation = build_conversation(question_text, audio_src)
         text_out = model.generate(conversation)
         outputs.append(text_out)

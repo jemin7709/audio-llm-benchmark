@@ -33,7 +33,7 @@ dependencies = [
     "numpy<2.3",
     "openai>=1.52.0,<=1.90.0",
     "opencv-python-headless>=4.11.0",
-    "outlines==0.1.11",
+    "outlines==1.2.8",
     "packaging>=24.2",
     "pandas>=2.3.2",
     "partial-json-parser>=0.2.1.1.post6",
