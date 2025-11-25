@@ -1,22 +1,18 @@
-[build-system]
-requires = ["setuptools>=77.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "lalm_bench"
+name = "lalm-bench-inference"
 version = "0.1.0"
-requires-python = ">=3.12"
+description = "Inference-only environment for lalm_bench"
+requires-python = ">=3.12,<3.13"
 dependencies = [
-    "aac-metrics>=0.6.0",
     "accelerate>=1.10.1",
     "aiohttp>=3.12.15",
     "blake3>=1.0.8",
     "cachetools>=6.2.1",
     "cloudpickle>=3.1.2",
     "cmake>=3.26.1",
-    "compressed-tensors==0.10.2",
+    "compressed-tensors>=0.10.2",
     "datasets>=4.0.0",
-    "depyf==0.18.0",
+    "depyf>=0.18.0",
     "einops>=0.8.1",
     "fastapi[standard]>=0.115.0",
     "filelock>=3.16.1",
@@ -26,16 +22,15 @@ dependencies = [
     "jinja2>=3.1.6",
     "lark==1.2.2",
     "llguidance>=0.7.11,<0.8.0 ; platform_machine == 'aarch64' or platform_machine == 'arm64' or platform_machine == 'x86_64'",
-    "lm-format-enforcer>=0.10.11,<0.11",
+    "lm-format-enforcer>=0.10.11",
     "mistral-common[opencv]>=1.6.2",
     "msgspec>=0.19.0",
     "ninja>=1.13.0",
-    "nltk>=3.9.1",
     "numba==0.61.2",
     "numpy<2.3",
-    "openai>=1.52.0,<=1.90.0",
+    "openai>=1.52.0",
     "opencv-python-headless>=4.11.0",
-    "outlines==1.2.8",
+    "outlines>=1.0.0",
     "packaging>=24.2",
     "pandas>=2.3.2",
     "partial-json-parser>=0.2.1.1.post6",
@@ -55,7 +50,6 @@ dependencies = [
     "ray[cgraph]>=2.43.0,!=2.44.*",
     "regex>=2025.9.18",
     "requests>=2.26.0",
-    "scipy>=1.16.2",
     "sentencepiece>=0.2.1",
     "setuptools>=77.0.3,<80.0.0",
     "setuptools-scm>=8",
@@ -63,29 +57,20 @@ dependencies = [
     "tiktoken>=0.6.0",
     "timm>=1.0.20",
     "tokenizers>=0.21.1",
-    "torch==2.7.0",
-    "torchaudio==2.7.0",
-    "torchvision==0.22.0",
+    "torch>=2.7.0",
+    "torchaudio>=2.7.0",
+    "torchvision>=0.22.0",
     "tqdm>=4.67.1",
     "transformers>=4.51.1",
-    "typer>=0.20.0",
     "typing-extensions>=4.10",
     "watchfiles>=1.1.1",
     "wheel>=0.45.1",
-    "xformers==0.0.30 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
-    "xgrammar==0.1.19 ; platform_machine == 'aarch64' or platform_machine == 'arm64' or platform_machine == 'x86_64'",
+    "xformers>=0.0.27.post2 ; platform_machine == 'x86_64' and sys_platform == 'linux'",
+    "xgrammar>=0.1.19 ; platform_machine == 'aarch64' or platform_machine == 'arm64' or platform_machine == 'x86_64'",
     "yarl>=1.20.1",
+    "vllm==0.10.2",
 ]
 
-[project.scripts]
-lalm = "cli:app"
-
 [tool.uv]
-package = true
 no-build-isolation-package = ['flash-attn']
 
-[tool.setuptools]
-py-modules = ["cli"]
-
-[tool.ruff]
-exclude = ["extra"]

@@ -5,7 +5,6 @@ services:
     build: .
     ipc: host
     environment:
-      # HF_HOME: /root/cache
       HF_TOKEN: ${HF_TOKEN}
       PYTHONPATH: src
       UV_LINK_MODE: copy
@@ -26,7 +25,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: [ '0', '1' ]
+              device_ids: [ '0', '1', '2', '3', '4', '5', '6', '7' ]
               capabilities: [ gpu ]
 volumes:
   venv_hailo_jemin:

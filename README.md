@@ -40,9 +40,13 @@ datasets>=4.0.0           # 데이터셋 로더
 # uv 설치 (아직 설치 안 했다면)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 프로젝트 의존성 설치
+# 루트 환경 동기화
 cd /home/jemin/lalm_bench
 uv sync
+
+# 전용 가상환경 준비
+uv sync --project envs/inference
+uv sync --project envs/evaluation
 ```
 
 ### 2. 데이터셋 다운로드
@@ -57,56 +61,47 @@ bash scripts/download_datasets.sh
 
 ### 3. 전체 벤치마크 실행
 
+Typer CLI(엔트리포인트 `lalm`)를 사용합니다. `--model` 옵션을 생략하면 기본 모델 3종(Gemma3N, Qwen2.5-Omni, Qwen3-Omni)을 순차 실행합니다.
+
 ```bash
-# 모든 모델, 모든 벤치마크 (Clotho-v2 + MMAU-Pro)
-bash scripts/run.sh
+# 모든 모델 대상으로 Clotho + MMAU-Pro 전체 파이프라인 실행
+uv run lalm run clotho
+uv run lalm run mmau-pro
 
 # 특정 모델만 실행 (예: Gemma3N)
-bash scripts/run.sh gemma3n
+uv run lalm run clotho --model gemma3n
+uv run lalm run mmau-pro --model gemma3n
 ```
 
-결과는 `./outputs/{MODEL}/result.txt`에 저장됩니다.
+각 모델의 결과는 `./outputs/{MODEL}/result_{벤치마크}.txt`에 저장됩니다.
 
 ---
 
 ## 📊 사용 방법
 
-### 벤치마크별 실행
+### 명령어 개요
 
-#### Clotho-v2 벤치마크
+| 목적 | 명령 |
+|------|------|
+| 전체 파이프라인 | `uv run lalm run <benchmark> [--model MODEL]` |
+| Inference만 | `uv run lalm inference <benchmark> [--model MODEL]` |
+| Evaluation만 | `uv run lalm eval <benchmark> [--model MODEL]` |
 
-```bash
-# 전체 파이프라인 (inference + evaluation)
-bash scripts/run_clotho.sh gemma3n
+- `<benchmark>`: `clotho` 또는 `mmau-pro`
+- `--model`을 생략하면 `gemma3n`, `qwen2_5-omni`, `qwen3-omni` 순으로 실행
+- `--output-root` 옵션으로 결과 디렉토리를 바꿀 수 있음 (기본값 `./outputs`)
 
-# Inference만 (음성에서 텍스트 생성)
-bash scripts/run_clotho_inference.sh gemma3n
-
-# Evaluation만 (생성된 결과 평가)
-bash scripts/run_clotho_evaluation.sh gemma3n
-```
-
-#### MMAU-Pro 벤치마크
+### 예시
 
 ```bash
-# 전체 파이프라인
-bash scripts/run_mmau_pro.sh qwen2_5-omni
+# Gemma3N으로 Clotho 전체 파이프라인 실행
+uv run lalm run clotho --model gemma3n
 
-# Inference만
-bash scripts/run_mmau_pro_inference.sh qwen2_5-omni
+# 모든 기본 모델로 MMAU-Pro inference만 실행
+uv run lalm inference mmau-pro
 
-# Evaluation만
-bash scripts/run_mmau_pro_evaluation.sh qwen2_5-omni
-```
-
-### 단계별 실행
-
-```bash
-# Inference 단계만 (모든 벤치마크)
-bash scripts/run_inference.sh gemma3n
-
-# Evaluation 단계만 (모든 벤치마크)
-bash scripts/run_evaluation.sh gemma3n
+# qwen3-omni 결과를 이용해 Clotho 평가만 수행
+uv run lalm eval clotho --model qwen3-omni
 ```
 
 ---
@@ -131,15 +126,15 @@ lalm_bench/
 │       ├── clotho_download.py     # 데이터셋 다운로드
 │       └── seed.py                # 난수 시드 설정
 │
-├── scripts/                       # 실행 스크립트
-│   ├── run.sh                     # 전체 벤치마크
-│   ├── run_clotho.sh              # Clotho만
-│   ├── run_mmau_pro.sh            # MMAU-Pro만
-│   ├── run_inference.sh           # Inference 단계
-│   ├── run_evaluation.sh          # Evaluation 단계
-│   ├── pipelines/                 # 파이프라인 조합
-│   ├── tasks/                     # 개별 작업
-│   └── env/                       # 환경 설정
+├── envs/                          # 전용 가상환경 정의
+│   ├── inference/pyproject.toml   # 최신 transformers + vLLM 사용
+│   └── evaluation/pyproject.toml  # transformers==4.42.4 + aac-metrics
+│
+├── cli.py                         # Typer 기반 통합 CLI
+│
+├── scripts/                       # 보조 스크립트
+│   ├── download_datasets.sh       # 데이터 다운로드
+│   └── install_vllm.sh            # Docker 빌드 시 추가 설치
 │
 ├── datasets/                      # 데이터셋 (다운로드 후 저장)
 ├── outputs/                       # 벤치마크 결과
@@ -162,7 +157,7 @@ export HF_TOKEN=your_hf_token_here
 docker compose up -d
 
 # 컨테이너 내부에서 명령 실행
-docker compose exec lalm_bench bash scripts/run_clotho.sh gemma3n
+docker compose exec lalm_bench uv run lalm run clotho --model gemma3n
 
 # 컨테이너 종료
 docker compose down
@@ -180,13 +175,14 @@ docker compose down
 
 | 실행 유형 | 출력 파일 |
 |----------|---------|
-| 전체 벤치마크 | `./outputs/{MODEL}/result.txt` |
-| Clotho만 | `./outputs/{MODEL}/result_clotho.txt` |
-| MMAU-Pro만 | `./outputs/{MODEL}/result_mmau_pro.txt` |
-| Inference만 | `./outputs/{MODEL}/result_inference.txt` |
-| Evaluation만 | `./outputs/{MODEL}/result_evaluation.txt` |
-| 에러 로그 | `./outputs/{MODEL}/*_infer.stderr.log` |
-| 에러 로그 | `./outputs/{MODEL}/*_eval.stderr.log` |
+| Clotho 전체 파이프라인 | `./outputs/{MODEL}/result_clotho.txt` |
+| MMAU-Pro 전체 파이프라인 | `./outputs/{MODEL}/result_mmau_pro.txt` |
+| Clotho inference만 | `./outputs/{MODEL}/result_clotho_inference.txt` |
+| MMAU-Pro inference만 | `./outputs/{MODEL}/result_mmau_pro_inference.txt` |
+| Clotho evaluation만 | `./outputs/{MODEL}/result_clotho_evaluation.txt` |
+| MMAU-Pro evaluation만 | `./outputs/{MODEL}/result_mmau_pro_evaluation.txt` |
+| 에러 로그 (Inference) | `./outputs/{MODEL}/*_infer.stderr.log` |
+| 에러 로그 (Evaluation) | `./outputs/{MODEL}/*_eval.stderr.log` |
 
 ---
 
@@ -194,19 +190,14 @@ docker compose down
 
 ### 커스텀 환경 설정
 
-**Inference 환경 준비**
-```bash
-bash scripts/env/setup_inference.sh
-```
+`envs/` 디렉토리마다 독립적인 `pyproject.toml`을 사용하므로, 필요한 경우 개별적으로 재동기화하면 됩니다.
 
-**Evaluation 환경 준비**
 ```bash
-bash scripts/env/setup_evaluation.sh
-```
+# Inference venv 재구성 (최신 transformers + vLLM)
+uv sync --project envs/inference --reinstall
 
-**기본 환경으로 복원**
-```bash
-bash scripts/env/restore_env.sh
+# Evaluation venv 재구성 (transformers==4.42.4 + aac-metrics)
+uv sync --project envs/evaluation --reinstall
 ```
 
 ### 데이터셋 샘플링

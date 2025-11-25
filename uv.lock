@@ -1049,7 +1049,7 @@ wheels = [
 [[package]]
 name = "lalm-bench"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "aac-metrics" },
     { name = "accelerate" },
@@ -1103,7 +1103,6 @@ dependencies = [
     { name = "sentencepiece" },
     { name = "setuptools" },
     { name = "setuptools-scm" },
-    { name = "six" },
     { name = "soundfile" },
     { name = "tiktoken" },
     { name = "timm" },
@@ -1113,6 +1112,7 @@ dependencies = [
     { name = "torchvision" },
     { name = "tqdm" },
     { name = "transformers" },
+    { name = "typer" },
     { name = "typing-extensions" },
     { name = "watchfiles" },
     { name = "wheel" },
@@ -1139,7 +1139,6 @@ requires-dist = [
     { name = "flash-attn", specifier = ">=2.8.3" },
     { name = "gguf", specifier = ">=0.13.0" },
     { name = "huggingface-hub", extras = ["hf-xet"], specifier = ">=0.33.0" },
-    { name = "importlib-metadata", marker = "python_full_version < '3.10'" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "lark", specifier = "==1.2.2" },
     { name = "llguidance", marker = "platform_machine == 'aarch64' or platform_machine == 'arm64' or platform_machine == 'x86_64'", specifier = ">=0.7.11,<0.8.0" },
@@ -1148,8 +1147,7 @@ requires-dist = [
     { name = "msgspec", specifier = ">=0.19.0" },
     { name = "ninja", specifier = ">=1.13.0" },
     { name = "nltk", specifier = ">=3.9.1" },
-    { name = "numba", marker = "python_full_version == '3.9.*'", specifier = "==0.60.0" },
-    { name = "numba", marker = "python_full_version >= '3.10'", specifier = "==0.61.2" },
+    { name = "numba", specifier = "==0.61.2" },
     { name = "numpy", specifier = "<2.3" },
     { name = "openai", specifier = ">=1.52.0,<=1.90.0" },
     { name = "opencv-python-headless", specifier = ">=4.11.0" },
@@ -1176,9 +1174,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.16.2" },
     { name = "sentencepiece", specifier = ">=0.2.1" },
     { name = "setuptools", specifier = ">=77.0.3,<80.0.0" },
-    { name = "setuptools", marker = "python_full_version >= '3.12'", specifier = ">=77.0.3,<80" },
     { name = "setuptools-scm", specifier = ">=8" },
-    { name = "six", marker = "python_full_version >= '3.12'", specifier = ">=1.16.0" },
     { name = "soundfile", specifier = ">=0.13.1" },
     { name = "tiktoken", specifier = ">=0.6.0" },
     { name = "timm", specifier = ">=1.0.20" },
@@ -1188,6 +1184,7 @@ requires-dist = [
     { name = "torchvision", specifier = "==0.22.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "transformers", specifier = ">=4.51.1" },
+    { name = "typer", specifier = ">=0.20.0" },
     { name = "typing-extensions", specifier = ">=4.10" },
     { name = "watchfiles", specifier = ">=1.1.1" },
     { name = "wheel", specifier = ">=0.45.1" },

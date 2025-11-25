@@ -1,11 +1,8 @@
-[build-system]
-requires = ["setuptools>=77.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "lalm_bench"
+name = "lalm-bench-evaluation"
 version = "0.1.0"
-requires-python = ">=3.12"
+description = "Evaluation-only environment for lalm_bench"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "aac-metrics>=0.6.0",
     "accelerate>=1.10.1",
@@ -55,20 +52,21 @@ dependencies = [
     "ray[cgraph]>=2.43.0,!=2.44.*",
     "regex>=2025.9.18",
     "requests>=2.26.0",
+    "scikit-learn>=1.7.2",
     "scipy>=1.16.2",
+    "sentence-transformers>=5.1.2",
     "sentencepiece>=0.2.1",
     "setuptools>=77.0.3,<80.0.0",
     "setuptools-scm>=8",
     "soundfile>=0.13.1",
     "tiktoken>=0.6.0",
     "timm>=1.0.20",
-    "tokenizers>=0.21.1",
+    "tokenizers>=0.19.0,<0.20.0",
     "torch==2.7.0",
     "torchaudio==2.7.0",
     "torchvision==0.22.0",
     "tqdm>=4.67.1",
-    "transformers>=4.51.1",
-    "typer>=0.20.0",
+    "transformers==4.42.4",
     "typing-extensions>=4.10",
     "watchfiles>=1.1.1",
     "wheel>=0.45.1",
@@ -77,15 +75,7 @@ dependencies = [
     "yarl>=1.20.1",
 ]
 
-[project.scripts]
-lalm = "cli:app"
-
 [tool.uv]
-package = true
 no-build-isolation-package = ['flash-attn']
+extra-build-dependencies = { xformers = ["torch"] }
 
-[tool.setuptools]
-py-modules = ["cli"]
-
-[tool.ruff]
-exclude = ["extra"]
