@@ -1,8 +1,7 @@
 .venv/
+**/.venv/
 .git/
 docker-compose.yaml
 AGENTS.md
 extra/
-extra/vllm/build
-extra/vllm/.deps
-extra/vllm/**/__
+outputs/

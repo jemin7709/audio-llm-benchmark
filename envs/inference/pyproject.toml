@@ -69,6 +69,7 @@ dependencies = [
     "xgrammar>=0.1.19 ; platform_machine == 'aarch64' or platform_machine == 'arm64' or platform_machine == 'x86_64'",
     "yarl>=1.20.1",
     "vllm==0.10.2",
+    "matplotlib>=3.10.7",
 ]
 
 [tool.uv]

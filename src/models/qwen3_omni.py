@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import Dict, List, Optional, Sequence
 import torch
 from qwen_omni_utils import process_mm_info
 from transformers.models.qwen3_omni_moe import (
@@ -8,6 +8,8 @@ from transformers.models.qwen3_omni_moe import (
 from vllm import LLM, SamplingParams
 import time
 import os
+
+from src.utils.attention_io import select_layers
 
 
 class Qwen3Omni:
@@ -44,7 +46,7 @@ class Qwen3Omni:
             self.model = Qwen3OmniMoeForConditionalGeneration.from_pretrained(
                 name,
                 dtype=dtype,
-                attn_implementation="flash_attention_2",
+                attn_implementation="eager",
                 max_length=4096,
                 device_map=device,
             )
@@ -85,6 +87,52 @@ class Qwen3Omni:
                 .to(self.model.dtype)
             )
         return inputs
+
+    def extract_attentions(
+        self, messages: List[Dict[str, str]], layers: Optional[Sequence[int]] = None
+    ) -> Dict[str, List]:
+        if self.use_vllm:
+            raise NotImplementedError("attention not supported in vLLM mode")
+
+        inputs = self._render(messages)
+        with torch.no_grad():
+            # Qwen3-Omni는 복합 모델이므로 thinker 서브모델을 직접 호출
+            outputs = self.model.thinker(
+                **inputs,
+                output_attentions=True,
+                use_audio_in_video=True,
+                use_cache=False,
+                return_dict=True,
+            )
+
+        attentions = getattr(outputs, "attentions", None)
+        if attentions is None:
+            raise RuntimeError("Model did not return attention tensors.")
+
+        selected_attns, selected_layers = select_layers(attentions, layers)
+        formatted_attn: List = []
+        for tensor in selected_attns:
+            averaged = tensor.mean(dim=1, keepdim=False)
+            frame = (
+                averaged[0]
+                .to(torch.float32)
+                .detach()
+                .cpu()
+                .contiguous()
+            )
+            formatted_attn.append(frame.numpy())
+
+        tokenizer = getattr(self.processor, "tokenizer", None)
+        if tokenizer is None:
+            raise RuntimeError("Processor does not expose a tokenizer.")
+        token_ids = inputs["input_ids"][0].detach().cpu().tolist()
+        tokens = tokenizer.convert_ids_to_tokens(token_ids)
+
+        return {
+            "attentions": formatted_attn,
+            "tokens": tokens,
+            "layers": selected_layers,
+        }
 
     def generate(self, messages) -> str:
         inputs = self._render(messages)

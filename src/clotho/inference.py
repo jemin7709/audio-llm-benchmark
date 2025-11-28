@@ -17,7 +17,7 @@ import random
 import sys
 import traceback
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -27,6 +27,8 @@ from transformers import (
     set_seed,
 )
 from models import load_model
+from src.utils.attention_io import default_run_name, save_attention_bundle
+from src.utils.attention_plot import save_sample_plots
 
 seed = 42
 
@@ -133,34 +135,46 @@ def load_clotho_data(clotho_base_path: str, split: str = "evaluation") -> Dict:
 
 
 def generate_predictions(
-    data: Dict, model, prompt: str, timeout: int, infer_script_path: str
+    data: Dict,
+    model,
+    prompt: str,
+    timeout: int,
+    infer_script_path: str,
+    attn_config: Optional[Dict[str, Any]] = None,
+    use_white_noise: bool = False,
 ) -> Dict[str, str]:
     """Generates predictions for each audio file using the Audio Flamingo 3 CLI."""
     predictions = {}
     failed_samples = []
 
-    # White noise 파일 경로 설정
-    white_noise_path = "white-noise-358382.mp3"
-    if not os.path.exists(white_noise_path):
-        raise FileNotFoundError(f"White noise file not found: {white_noise_path}")
-
-    print(
-        f"Generating predictions for {len(data)} samples using white noise file: {white_noise_path}"
-    )
+    noise_path: Optional[str] = None
+    if use_white_noise:
+        candidate = Path("white-noise-358382.mp3")
+        if not candidate.exists():
+            raise FileNotFoundError(f"White noise file not found: {candidate}")
+        noise_path = str(candidate)
+        print(
+            f"Generating predictions for {len(data)} samples using white noise file: {noise_path}"
+        )
+    else:
+        print(f"Generating predictions for {len(data)} samples using dataset audio.")
 
     # if not os.path.exists(infer_script_path):
     #     raise FileNotFoundError(f"Inference script not found at {infer_script_path}. Please provide correct path.")
 
-    for audio_file, info in tqdm(data.items(), desc="Generating Captions"):
+    for idx, (audio_file, info) in enumerate(
+        tqdm(data.items(), desc="Generating Captions")
+    ):
         try:
+            resolved_audio = noise_path or info["audio_path"]
             conversation = [
                 {
                     "role": "user",
                     "content": [
                         {
                             "type": "audio",
-                            "audio": white_noise_path,
-                        },  # 실제 오디오 대신 white noise 파일 사용
+                            "audio": resolved_audio,
+                        },
                         {"type": "text", "text": prompt},
                     ],
                 }
@@ -169,10 +183,46 @@ def generate_predictions(
             predictions[audio_file] = text_out
 
             print("[DEBUG] conversation:", conversation)
-            print("[DEBUG] audio path:", white_noise_path)  # white noise 경로로 변경
+            print("[DEBUG] audio path:", resolved_audio)
             print("[DEBUG] answer:", info["references"][0])
             print("[DEBUG] text_out:", text_out, "\n")
 
+            if attn_config:
+                try:
+                    attn = model.extract_attentions(
+                        conversation,
+                        layers=attn_config.get("layers"),
+                    )
+                    attn_config["root"].mkdir(parents=True, exist_ok=True)
+                    sample_dir = attn_config["root"] / f"sample_{idx:04d}"
+                    meta = {
+                        "model": attn_config["model"],
+                        "sample_id": audio_file,
+                        "benchmark": attn_config["benchmark"],
+                        "split": attn_config["split"],
+                        "prompt": attn_config["prompt"],
+                        "attn_run_name": attn_config["run_name"],
+                        "layers": attn["layers"],
+                    }
+                    save_attention_bundle(
+                        attn["attentions"],
+                        attn["tokens"],
+                        meta,
+                        sample_dir,
+                    )
+                    if attn_config.get("plot_now"):
+                        save_sample_plots(
+                            attn["attentions"],
+                            attn["tokens"],
+                            attn["layers"],
+                            sample_dir,
+                            audio_file,
+                        )
+                except Exception as exc:
+                    print(
+                        f"[WARN] Attention saving failed for {audio_file}: {exc}",
+                        file=sys.stderr,
+                    )
         except Exception as e:
             print(f"\nAn unexpected error occurred with {audio_file}: {e}\n")
             print(traceback.format_exc())
@@ -231,6 +281,32 @@ def main():
         default=None,
         help="Number of samples to process for a quick test.",
     )
+    parser.add_argument(
+        "--use-white-noise",
+        action="store_true",
+        help="Force using the bundled white noise audio instead of original audio.",
+    )
+    parser.add_argument(
+        "--save-attn",
+        action="store_true",
+        help="Attention map을 저장합니다.",
+    )
+    parser.add_argument(
+        "--attn-layers",
+        nargs="+",
+        type=int,
+        help="저장할 레이어 인덱스(0 기반).",
+    )
+    parser.add_argument(
+        "--attn-run-name",
+        type=str,
+        help="어텐션 저장에 사용할 run 이름(미지정 시 timestamp).",
+    )
+    parser.add_argument(
+        "--attn-plot-now",
+        action="store_true",
+        help="어텐션 저장 직후 이미지까지 함께 생성합니다.",
+    )
     # Device selection removed; rely on default behavior
 
     args, _ = parser.parse_known_args()
@@ -267,14 +343,30 @@ def main():
         sample_keys = random.sample(list(clotho_data.keys()), args.sample_size)
         clotho_data = {k: clotho_data[k] for k in sample_keys}
 
+    attention_config = None
+    if args.save_attn:
+        run_name = args.attn_run_name or default_run_name()
+        attention_config = {
+            "root": Path(args.output_json_path) / "attn" / run_name,
+            "run_name": run_name,
+            "model": args.model,
+            "benchmark": "clotho",
+            "split": args.split,
+            "prompt": args.prompt,
+            "layers": args.attn_layers,
+            "plot_now": args.attn_plot_now,
+        }
+
     # 3. Generate Predictions
-    model = load_model(args.model)
+    model = load_model(args.model, require_attention=args.save_attn)
     predictions = generate_predictions(
         clotho_data,
         model,
         args.prompt,
         args.timeout,
         args.infer_script_path,
+        attn_config=attention_config,
+        use_white_noise=args.use_white_noise,
     )
 
     # 4. Combine predictions with references and save

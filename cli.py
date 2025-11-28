@@ -49,12 +49,21 @@ class BenchmarkConfig:
     subdir: str
     inference_log: str
     evaluation_log: str
-    inference_builder: Callable[[str, Path], List[str]]
+    inference_builder: Callable[
+        [str, Path, bool, Optional[List[int]], Optional[str], bool], List[str]
+    ]
     evaluation_builder: Callable[[Path], List[str]]
 
 
-def _clotho_inference_args(model: str, bench_dir: Path) -> List[str]:
-    return [
+def _clotho_inference_args(
+    model: str,
+    bench_dir: Path,
+    save_attn: bool = False,
+    attn_layers: Optional[List[int]] = None,
+    attn_run_name: Optional[str] = None,
+    use_white_noise: bool = False,
+) -> List[str]:
+    args = [
         "src/clotho/inference.py",
         "--split",
         "evaluation",
@@ -64,6 +73,16 @@ def _clotho_inference_args(model: str, bench_dir: Path) -> List[str]:
         str(bench_dir),
         "-t",
     ]
+    if save_attn:
+        args.append("--save-attn")
+    if attn_layers:
+        args.append("--attn-layers")
+        args.extend(str(layer) for layer in attn_layers)
+    if attn_run_name:
+        args.extend(["--attn-run-name", attn_run_name])
+    if use_white_noise:
+        args.append("--use-white-noise")
+    return args
 
 
 def _clotho_evaluation_args(bench_dir: Path) -> List[str]:
@@ -83,8 +102,15 @@ def _clotho_evaluation_args(bench_dir: Path) -> List[str]:
     ]
 
 
-def _mmau_pro_inference_args(model: str, bench_dir: Path) -> List[str]:
-    return [
+def _mmau_pro_inference_args(
+    model: str,
+    bench_dir: Path,
+    save_attn: bool = False,
+    attn_layers: Optional[List[int]] = None,
+    attn_run_name: Optional[str] = None,
+    use_white_noise: bool = False,
+) -> List[str]:
+    args = [
         "src/mmau-pro/inference.py",
         "--split",
         "evaluation",
@@ -95,6 +121,16 @@ def _mmau_pro_inference_args(model: str, bench_dir: Path) -> List[str]:
         str(bench_dir),
         "-t",
     ]
+    if save_attn:
+        args.append("--save-attn")
+    if attn_layers:
+        args.append("--attn-layers")
+        args.extend(str(layer) for layer in attn_layers)
+    if attn_run_name:
+        args.extend(["--attn-run-name", attn_run_name])
+    if use_white_noise:
+        args.append("--use-white-noise")
+    return args
 
 
 def _mmau_pro_evaluation_args(bench_dir: Path) -> List[str]:
@@ -164,9 +200,9 @@ def _finalize_result_file(path: Path, label: str) -> None:
 
 def _env_with_src() -> Dict[str, str]:
     env = os.environ.copy()
-    src_path = str(SRC_DIR)
+    root_path = str(ROOT)
     existing = env.get("PYTHONPATH")
-    env["PYTHONPATH"] = f"{src_path}{os.pathsep}{existing}" if existing else src_path
+    env["PYTHONPATH"] = f"{root_path}{os.pathsep}{existing}" if existing else root_path
     return env
 
 
@@ -223,6 +259,12 @@ def _resolve_models(models: Optional[List[str]]) -> List[str]:
     return list(models) if models else list(DEFAULT_MODELS)
 
 
+def _model_output_dir(model: str, use_white_noise: bool) -> str:
+    if use_white_noise:
+        return f"{model}_with_noise"
+    return model
+
+
 def _normalize_output_root(path: Path) -> Path:
     if path.is_absolute():
         return path
@@ -249,25 +291,37 @@ def _run_inference(
     benchmark: Benchmark,
     models: List[str],
     output_root: Path,
+    save_attn: bool = False,
+    attn_layers: Optional[List[int]] = None,
+    attn_run_name: Optional[str] = None,
+    use_white_noise: bool = False,
 ) -> None:
     _ensure_env_exists(INFERENCE_PROJECT, "Inference")
     config = CONFIGS[benchmark]
     for model in models:
         typer.echo(f"=== Running {config.display_name} inference for {model} ===")
-        bench_dir = _build_benchmark_dir(output_root, model, config)
+        model_dir = _model_output_dir(model, use_white_noise)
+        bench_dir = _build_benchmark_dir(output_root, model_dir, config)
         result_file = (
-            output_root / model / f"result_{_safe_name(benchmark)}_inference.txt"
+            output_root / model_dir / f"result_{_safe_name(benchmark)}_inference.txt"
         )
         _initialize_result_file(
             result_file, f"{config.display_name} Inference Results", model
         )
-        args = config.inference_builder(model, bench_dir)
+        args = config.inference_builder(
+            model,
+            bench_dir,
+            save_attn=save_attn,
+            attn_layers=attn_layers,
+            attn_run_name=attn_run_name,
+            use_white_noise=use_white_noise,
+        )
         _run_phase(
             f"{config.display_name} inference",
             INFERENCE_PROJECT,
             args,
             result_file,
-            (output_root / model / config.inference_log),
+            (output_root / model_dir / config.inference_log),
         )
         _finalize_result_file(
             result_file, f"{config.display_name} inference for {model}"
@@ -311,24 +365,36 @@ def _run_pipeline(
     benchmark: Benchmark,
     models: List[str],
     output_root: Path,
+    save_attn: bool = False,
+    attn_layers: Optional[List[int]] = None,
+    attn_run_name: Optional[str] = None,
+    use_white_noise: bool = False,
 ) -> None:
     _ensure_env_exists(INFERENCE_PROJECT, "Inference")
     _ensure_env_exists(EVALUATION_PROJECT, "Evaluation")
     config = CONFIGS[benchmark]
     for model in models:
         typer.echo(f"=== Running {config.display_name} benchmark for {model} ===")
-        bench_dir = _build_benchmark_dir(output_root, model, config)
-        result_file = output_root / model / f"result_{_safe_name(benchmark)}.txt"
+        model_dir = _model_output_dir(model, use_white_noise)
+        bench_dir = _build_benchmark_dir(output_root, model_dir, config)
+        result_file = output_root / model_dir / f"result_{_safe_name(benchmark)}.txt"
         _initialize_result_file(
             result_file, f"{config.display_name} Benchmark Results", model
         )
-        inference_args = config.inference_builder(model, bench_dir)
+        inference_args = config.inference_builder(
+            model,
+            bench_dir,
+            save_attn=save_attn,
+            attn_layers=attn_layers,
+            attn_run_name=attn_run_name,
+            use_white_noise=use_white_noise,
+        )
         _run_phase(
             f"{config.display_name} inference",
             INFERENCE_PROJECT,
             inference_args,
             result_file,
-            (output_root / model / config.inference_log),
+            (output_root / model_dir / config.inference_log),
         )
         try:
             eval_args = config.evaluation_builder(bench_dir)
@@ -340,7 +406,7 @@ def _run_pipeline(
             EVALUATION_PROJECT,
             eval_args,
             result_file,
-            (output_root / model / config.evaluation_log),
+            (output_root / model_dir / config.evaluation_log),
         )
         _finalize_result_file(
             result_file, f"{config.display_name} benchmark for {model}"
@@ -361,13 +427,41 @@ def inference(
         "--output-root",
         help="Base directory for benchmark outputs.",
     ),
+    save_attn: bool = typer.Option(
+        False,
+        "--save-attn/--no-save-attn",
+        help="Attention map을 저장하려면 활성화합니다.",
+    ),
+    attn_layers: Optional[List[int]] = typer.Option(
+        None,
+        "--attn-layers",
+        help="저장할 레이어 인덱스(0 기반)",
+    ),
+    attn_run_name: Optional[str] = typer.Option(
+        None,
+        "--attn-run-name",
+        help="어텐션 저장 run 이름(미지정 시 timestamp).",
+    ),
+    use_white_noise: bool = typer.Option(
+        False,
+        "--use-white-noise/--no-use-white-noise",
+        help="white-noise-358382.mp3를 강제로 사용합니다.",
+    ),
 ) -> None:
     """
     Run inference only for the selected benchmark.
     """
     selected_models = _resolve_models(model)
     output_root = _normalize_output_root(output_root)
-    _run_inference(benchmark, selected_models, output_root)
+    _run_inference(
+        benchmark,
+        selected_models,
+        output_root,
+        save_attn=save_attn,
+        attn_layers=attn_layers,
+        attn_run_name=attn_run_name,
+        use_white_noise=use_white_noise,
+    )
 
 
 @app.command("eval")
@@ -407,13 +501,41 @@ def run_pipeline(
         "--output-root",
         help="Base directory for benchmark outputs.",
     ),
+    save_attn: bool = typer.Option(
+        False,
+        "--save-attn/--no-save-attn",
+        help="Attention map을 저장하려면 활성화합니다.",
+    ),
+    attn_layers: Optional[List[int]] = typer.Option(
+        None,
+        "--attn-layers",
+        help="저장할 레이어 인덱스(0 기반)",
+    ),
+    attn_run_name: Optional[str] = typer.Option(
+        None,
+        "--attn-run-name",
+        help="어텐션 저장 run 이름(미지정 시 timestamp).",
+    ),
+    use_white_noise: bool = typer.Option(
+        False,
+        "--use-white-noise/--no-use-white-noise",
+        help="white-noise-358382.mp3를 강제로 사용합니다.",
+    ),
 ) -> None:
     """
     Run inference followed by evaluation for the selected benchmark.
     """
     selected_models = _resolve_models(model)
     output_root = _normalize_output_root(output_root)
-    _run_pipeline(benchmark, selected_models, output_root)
+    _run_pipeline(
+        benchmark,
+        selected_models,
+        output_root,
+        save_attn=save_attn,
+        attn_layers=attn_layers,
+        attn_run_name=attn_run_name,
+        use_white_noise=use_white_noise,
+    )
 
 
 if __name__ == "__main__":

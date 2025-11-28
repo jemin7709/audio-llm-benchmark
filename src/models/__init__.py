@@ -11,8 +11,14 @@ REGISTRY = {
 }
 
 
-def load_model(name: str, use_vllm: bool = False):
+def load_model(name: str, use_vllm: bool = False, require_attention: bool = False):
     key = name.lower()
     if key not in REGISTRY:
         raise ValueError(f"Unknown model '{name}'. Available: {list(REGISTRY.keys())}")
-    return REGISTRY[key](use_vllm=use_vllm)
+    model = REGISTRY[key](use_vllm=use_vllm)
+    if require_attention and not hasattr(model, "extract_attentions"):
+        raise ValueError(
+            f"Model '{name}' does not implement extract_attentions(). "
+            "Select a different checkpoint or disable attention saving."
+        )
+    return model

@@ -75,6 +75,9 @@ uv run lalm run mmau-pro --model gemma3n
 
 각 모델의 결과는 `./outputs/{MODEL}/result_{벤치마크}.txt`에 저장됩니다.
 
+## 🗂️ 서브 프로젝트 안내
+- 예측 유사도 비교(`projects/audio_similarity/`), Clotho 참조 유사도 분석(`projects/clotho_ref_similarity/`), 자동 루브릭 생성(`projects/make_rubrics/`) 등 보조 실험 스크립트의 목적·입출력·실행 예시는 `docs/subprojects.md`에서 확인할 수 있습니다.
+
 ---
 
 ## 📊 사용 방법
@@ -103,6 +106,21 @@ uv run lalm inference mmau-pro
 # qwen3-omni 결과를 이용해 Clotho 평가만 수행
 uv run lalm eval clotho --model qwen3-omni
 ```
+
+## 🔍 어텐션 시각화
+
+`visualization.py`를 실행하면 Gemma3N의 레이어별 어텐션을 이미지·NPY·JSON 형태로 저장할 수 있습니다.
+
+```bash
+uv run python visualization.py --prompt "Test" --layers 0 1 --limit-samples 1 --output-dir outputs/attn/smoke
+```
+
+결과물은 `outputs/attn/{run_name}/{sample_id}/` 및 `outputs/attn/{run_name}/global_*` 위치에 생성됩니다.
+
+### 어텐션 수집
+- `--save-attn`, `--attn-layers`, `--attn-run-name` 옵션을 Inference 명령에 붙이면 배치 중 어텐션을 저장합니다.
+- 예: `uv run lalm inference clotho --model gemma3n --save-attn`, `uv run lalm run mmau-pro --model qwen3-omni --save-attn --attn-run-name debug`.
+- 출력은 `./outputs/{MODEL}/{benchmark}/attn/{run_name}/sample_{idx}` 아래 `attn.npy`, `tokens.json`, `meta.json`으로 확인합니다.
 
 ---
 
@@ -136,12 +154,20 @@ lalm_bench/
 │   ├── download_datasets.sh       # 데이터 다운로드
 │   └── install_vllm.sh            # Docker 빌드 시 추가 설치
 │
+├── projects/                      # 서브 프로젝트 묶음
+│   ├── audio_similarity/          # 노이즈 vs 오디오 예측 유사도
+│   ├── clotho_ref_similarity/     # Clotho 캡션 유사도/아웃라이어 분석
+│   └── make_rubrics/              # Qwen 기반 루브릭 생성/후처리
+│
 ├── datasets/                      # 데이터셋 (다운로드 후 저장)
+├── extra/                         # 기타 실험 스크립트와 데이터 드롭존
 ├── outputs/                       # 벤치마크 결과
 ├── pyproject.toml                 # 프로젝트 설정
 ├── Dockerfile                     # Docker 이미지
 └── docker-compose.yaml            # Docker Compose 설정
 ```
+
+> 전체 디렉터리 설명은 `docs/folder_structure.md`에서 더 자세히 확인할 수 있습니다.
 
 ---
 

@@ -4,7 +4,9 @@ import json
 import os
 import random
 import re
+import sys
 import warnings
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -15,6 +17,8 @@ from transformers import (
     set_seed,
 )
 from models import load_model
+from src.utils.attention_io import default_run_name, save_attention_bundle
+from src.utils.attention_plot import save_sample_plots
 
 warnings.simplefilter(
     "ignore"
@@ -209,6 +213,8 @@ def generate_responses_with_audio(
     verbose: bool = False,
     verbose_n: int = 2,
     model: str = "qwen3-omni",
+    attn_config: Optional[Dict[str, Any]] = None,
+    use_white_noise: bool = False,
 ) -> None:
     """Generate model responses leveraging HF cache automatically.
 
@@ -217,7 +223,7 @@ def generate_responses_with_audio(
     format (adds a 'model_output' column, preserves existing columns).
     """
     df, base_dir = load_input_dataframe(split=split, input_parquet=input_parquet)
-    model = load_model(model)
+    model = load_model(model, require_attention=bool(attn_config))
 
     num_samples = len(df)
     if limit is not None:
@@ -225,12 +231,13 @@ def generate_responses_with_audio(
 
     df = df.iloc[:num_samples].copy()
 
-    # White noise 파일 경로 설정
-    white_noise_path = "white-noise-358382.mp3"
-    if not os.path.exists(white_noise_path):
-        raise FileNotFoundError(f"White noise file not found: {white_noise_path}")
-
-    print(f"Using white noise file for all samples: {white_noise_path}")
+    noise_path: Optional[str] = None
+    if use_white_noise:
+        candidate = Path("white-noise-358382.mp3")
+        if not candidate.exists():
+            raise FileNotFoundError(f"White noise file not found: {candidate}")
+        noise_path = str(candidate)
+        print(f"Using white noise file for all samples: {noise_path}")
 
     outputs: List[str] = []
     debug_records: List[Dict[str, Any]] = []
@@ -260,18 +267,58 @@ def generate_responses_with_audio(
             else:
                 audio_src = os.path.join(base_dir, ap_norm) if base_dir else ap_norm
 
-        audio_src = white_noise_path
-        conversation = build_conversation(question_text, audio_src)
+        resolved_audio = noise_path or audio_src
+        conversation = build_conversation(question_text, resolved_audio)
         text_out = model.generate(conversation)
         outputs.append(text_out)
+
+        if attn_config:
+            try:
+                attn = model.extract_attentions(
+                    conversation,
+                    layers=attn_config.get("layers"),
+                )
+                attn_config["root"].mkdir(parents=True, exist_ok=True)
+                sample_dir = attn_config["root"] / f"sample_{idx:04d}"
+                sample_id = sample.get("id") or f"mmau_{idx:04d}"
+                meta = {
+                    "model": attn_config["model"],
+                    "sample_id": sample_id,
+                    "benchmark": attn_config["benchmark"],
+                    "split": attn_config["split"],
+                    "prompt": question_text,
+                    "attn_run_name": attn_config["run_name"],
+                    "layers": attn["layers"],
+                }
+                save_attention_bundle(
+                    attn["attentions"],
+                    attn["tokens"],
+                    meta,
+                    sample_dir,
+                )
+                if attn_config.get("plot_now"):
+                    save_sample_plots(
+                        attn["attentions"],
+                        attn["tokens"],
+                        attn["layers"],
+                        sample_dir,
+                        sample_id,
+                    )
+            except Exception as exc:
+                print(
+                    f"[WARN] Attention saving failed for sample {idx}: {exc}",
+                    file=sys.stderr,
+                )
 
         if verbose and idx < verbose_n:
             print("[DEBUG] id:", sample.get("id"))
             print("[DEBUG] category:", category)
-            print("[DEBUG] resolved_audio:", audio_src)
+            print("[DEBUG] resolved_audio:", resolved_audio)
             print(
                 "[DEBUG] audio_exists:",
-                bool(isinstance(audio_src, str) and os.path.exists(audio_src)),
+                bool(
+                    isinstance(resolved_audio, str) and os.path.exists(resolved_audio)
+                ),
             )
             print("[DEBUG] conversation:", conversation[0]["content"][1]["text"])
             print("[DEBUG] text_out:", text_out, "\n")
@@ -280,9 +327,10 @@ def generate_responses_with_audio(
                     {
                         "id": sample.get("id"),
                         "category": category,
-                        "resolved_audio": audio_src,
+                        "resolved_audio": resolved_audio,
                         "audio_exists": bool(
-                            isinstance(audio_src, str) and os.path.exists(audio_src)
+                            isinstance(resolved_audio, str)
+                            and os.path.exists(resolved_audio)
                         ),
                         "conversation_text": conversation[0]["content"][1]["text"],
                         "text_out": text_out,
@@ -347,16 +395,54 @@ def parse_args() -> argparse.Namespace:
         help="Print debug info for the first few samples",
     )
     parser.add_argument(
+        "--use-white-noise",
+        action="store_true",
+        help="Force all samples to use white noise audio instead of dataset audio.",
+    )
+    parser.add_argument(
         "--verbose_n",
         type=int,
         default=10000,
         help="How many samples to print debug info for",
+    )
+    parser.add_argument(
+        "--save-attn",
+        action="store_true",
+        help="Attention map을 저장합니다.",
+    )
+    parser.add_argument(
+        "--attn-layers",
+        nargs="+",
+        type=int,
+        help="저장할 레이어 인덱스(0 기반).",
+    )
+    parser.add_argument(
+        "--attn-run-name",
+        type=str,
+        help="어텐션 저장 run 이름(미지정 시 timestamp).",
+    )
+    parser.add_argument(
+        "--attn-plot-now",
+        action="store_true",
+        help="어텐션 저장 직후 이미지를 즉시 생성합니다.",
     )
     return parser.parse_known_args()
 
 
 def main() -> None:
     args, _ = parse_args()
+    attention_config = None
+    if args.save_attn:
+        run_name = args.attn_run_name or default_run_name()
+        attention_config = {
+            "root": Path(args.output) / "attn" / run_name,
+            "run_name": run_name,
+            "model": args.model,
+            "benchmark": "mmau-pro",
+            "split": args.split,
+            "layers": args.attn_layers,
+            "plot_now": args.attn_plot_now,
+        }
     generate_responses_with_audio(
         split=args.split,
         limit=args.limit,
@@ -365,6 +451,8 @@ def main() -> None:
         verbose=args.verbose,
         verbose_n=args.verbose_n,
         model=args.model,
+        attn_config=attention_config,
+        use_white_noise=args.use_white_noise,
     )
 
 

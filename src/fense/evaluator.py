@@ -49,7 +49,7 @@ def load_pretrain_echecker(echecker_model: str, device: str = 'cuda', use_proxy:
         # Fallback: try loading with weights_only=True for newer PyTorch versions
         try:
             model_states = torch.load(file_path, map_location='cpu', weights_only=True)
-        except:
+        except (TypeError, RuntimeError):
             model_states = torch.load(file_path, map_location='cpu')
     
     clf = BERTFlatClassifier(

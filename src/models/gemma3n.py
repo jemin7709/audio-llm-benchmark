@@ -1,6 +1,9 @@
-from typing import List, Dict
+from typing import Dict, List, Optional, Sequence
+
 import torch
-from transformers import AutoProcessor, AutoModelForImageTextToText
+from transformers import AutoModelForImageTextToText, AutoProcessor
+
+from src.utils.attention_io import select_layers
 
 
 class Gemma3N:
@@ -22,7 +25,11 @@ class Gemma3N:
             name,
             dtype=dtype,
             device_map=device,
+            attn_implementation="eager",
         )
+        if hasattr(self.model, "set_attn_implementation"):
+            # Ensure HF sticks to standard SDP implementation so output_attentions works.
+            self.model.set_attn_implementation("eager")
         self.processor = AutoProcessor.from_pretrained(name)
 
         # del dummpy
@@ -56,6 +63,50 @@ class Gemma3N:
             gen_only, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )[0].strip()
         return text_out
+
+    def extract_attentions(
+        self,
+        messages: List[Dict[str, str]],
+        layers: Optional[Sequence[int]] = None,
+    ) -> Dict[str, List]:
+        """
+        Returns per-layer attention maps after averaging across heads.
+        """
+
+        if not hasattr(self.model.config, "output_attentions"):
+            raise RuntimeError("This model config does not support attention outputs.")
+
+        inputs = self._render(messages)
+        with torch.no_grad():
+            outputs = self.model(
+                **inputs,
+                output_attentions=True,
+                use_cache=False,
+                return_dict=True,
+            )
+
+        attentions = getattr(outputs, "attentions", None)
+        if attentions is None:
+            raise RuntimeError("Model did not return attention tensors.")
+
+        selected_attns, selected_layers = select_layers(attentions, layers)
+        formatted_attn: List = []
+        for tensor in selected_attns:
+            averaged = tensor.mean(dim=1, keepdim=False)
+            frame = averaged[0].to(torch.float32).detach().cpu().contiguous()
+            formatted_attn.append(frame.numpy())
+
+        tokenizer = getattr(self.processor, "tokenizer", None)
+        if tokenizer is None:
+            raise RuntimeError("Processor does not expose a tokenizer.")
+        token_ids = inputs["input_ids"][0].detach().cpu().tolist()
+        tokens = tokenizer.convert_ids_to_tokens(token_ids)
+
+        return {
+            "attentions": formatted_attn,
+            "tokens": tokens,
+            "layers": selected_layers,
+        }
 
 
 if __name__ == "__main__":
