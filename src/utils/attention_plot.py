@@ -12,7 +12,42 @@ import matplotlib
 
 matplotlib.use("Agg")  # 비-GUI 백엔드 강제 (멀티프로세스 안전)
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 import numpy as np
+import warnings
+
+
+# 한자 지원 폰트 설정
+def _setup_cjk_font():
+    """한자(CJK) 문자를 지원하는 폰트를 찾아서 설정"""
+    cjk_fonts = [
+        "Noto Sans CJK SC",
+        "Noto Sans CJK TC",
+        "Noto Sans CJK JP",
+        "Noto Sans CJK KR",
+        "Droid Sans Fallback",
+        "WenQuanYi Micro Hei",
+        "WenQuanYi Zen Hei",
+        "AR PL UMing CN",
+        "AR PL UKai CN",
+    ]
+
+    available_fonts = {f.name for f in fm.fontManager.ttflist}
+
+    for font_name in cjk_fonts:
+        if font_name in available_fonts:
+            plt.rcParams["font.sans-serif"] = [font_name] + plt.rcParams[
+                "font.sans-serif"
+            ]
+            return
+
+    # 한자 폰트를 찾지 못한 경우 경고 무시
+    warnings.filterwarnings(
+        "ignore", category=UserWarning, message=".*Glyph.*missing from font.*"
+    )
+
+
+_setup_cjk_font()
 
 
 def limited_tokens(tokens: Sequence[str]) -> Tuple[List[int], List[str]]:
@@ -229,8 +264,8 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--img-format",
-        default="jpg",
-        help="Image format/extension to emit (default: jpg).",
+        default="png",
+        help="Image format/extension to emit (default: png).",
     )
     parser.add_argument(
         "--overwrite",
