@@ -72,8 +72,9 @@ uv run --project envs/inference python cli.py run mmau-pro --model gemma3n
 
 각 모델의 결과는 `./outputs/{MODEL}/result_{벤치마크}.txt`에 저장됩니다.
 
-## 🗂️ 서브 프로젝트 안내
-- 예측 유사도 비교(`projects/audio_similarity/`), Clotho 참조 유사도 분석(`projects/clotho_ref_similarity/`), 자동 루브릭 생성(`projects/make_rubrics/`) 등 보조 실험 스크립트의 목적·입출력·실행 예시는 `docs/subprojects.md`에서 확인할 수 있습니다.
+## 🗂️ 보조 실험 & 분석
+- 어텐션 시각화, 예측 유사도 비교, Clotho 참조 유사도 분석, 자동 루브릭 생성 등의 보조 실험 스크립트는 `experiments/` 디렉토리에 위치합니다.
+- 실행은 `uv run python experiments/<area>/<script>.py` 형태로 통일하며, 각 실험별 상세 입출력 경로 및 옵션은 [`experiments/README.md`](experiments/README.md)를 참조하세요.
 
 ---
 
@@ -106,10 +107,10 @@ uv run --project envs/evaluation python cli.py eval clotho --model qwen3-omni
 
 ## 🔍 어텐션 시각화
 
-`visualization.py`를 실행하면 Gemma3N의 레이어별 어텐션을 이미지·NPY·JSON 형태로 저장할 수 있습니다.
+`experiments/attention/visualization.py`를 실행하면 Gemma3N의 레이어별 어텐션을 이미지·NPY·JSON 형태로 저장할 수 있습니다.
 
 ```bash
-uv run python visualization.py --prompt "Test" --layers 0 1 --limit-samples 1 --output-dir outputs/attn/smoke
+uv run python experiments/attention/visualization.py --prompt "Test" --layers 0 1 --limit-samples 1 --output-dir outputs/attn/smoke
 ```
 
 결과물은 `outputs/attn/{run_name}/{sample_id}/` 및 `outputs/attn/{run_name}/global_*` 위치에 생성됩니다.
@@ -151,13 +152,17 @@ lalm_bench/
 │   ├── download_datasets.sh       # 데이터 다운로드
 │   └── install_vllm.sh            # Docker 빌드 시 추가 설치
 │
-├── projects/                      # 서브 프로젝트 묶음
-│   ├── audio_similarity/          # 노이즈 vs 오디오 예측 유사도
-│   ├── clotho_ref_similarity/     # Clotho 캡션 유사도/아웃라이어 분석
-│   └── make_rubrics/              # Qwen 기반 루브릭 생성/후처리
+├── experiments/                   # 보조 분석 & 실험 스크립트
+│   ├── attention/                 # 어텐션 시각화
+│   │   └── visualization.py
+│   ├── similarity/                # 유사도 분석
+│   │   ├── audio_similarity/      # 노이즈 vs 오디오 예측 유사도
+│   │   └── clotho_ref_similarity/ # Clotho 캡션 유사도/아웃라이어 분석
+│   ├── rubrics/                   # 자동 루브릭 생성
+│   │   └── make_rubrics/          # Qwen 기반 루브릭 생성/후처리
+│   └── README.md                  # 사이드 프로젝트 규약
 │
 ├── datasets/                      # 데이터셋 (다운로드 후 저장)
-├── extra/                         # 기타 실험 스크립트와 데이터 드롭존
 ├── outputs/                       # 벤치마크 결과
 ├── pyproject.toml                 # 프로젝트 설정
 ├── Dockerfile                     # Docker 이미지

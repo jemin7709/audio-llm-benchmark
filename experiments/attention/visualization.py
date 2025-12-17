@@ -2,7 +2,7 @@
 Gemma3N attention extraction & visualization entry-point.
 
 Example:
-    uv run python visualization.py --prompt "Hello" --layers 0 1 --limit-samples 1
+    uv run python experiments/attention/visualization.py --prompt "Hello" --layers 0 1 --limit-samples 1
 """
 
 from __future__ import annotations
@@ -334,3 +334,4 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         sys.exit(130)
+
