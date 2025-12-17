@@ -15,12 +15,22 @@ run_and_log() {
   fi
 }
 
-run_and_log 'uv run lalm run mmau-pro --model gemma3n --save-attn --attn-run-name gemma_all --use-white-noise'
-run_and_log 'uv run lalm run mmau-pro --model gemma3n --save-attn --attn-run-name gemma_all'
-run_and_log 'uv run lalm run mmau-pro --model qwen2_5-omni --save-attn --attn-run-name qwen2_5-omni_all --use-white-noise'
-run_and_log 'uv run lalm run mmau-pro --model qwen2_5-omni --save-attn --attn-run-name qwen2_5-omni_all'
+run_and_log 'uv run lalm run clotho --model gemma3n --save-attn --attn-run-name gemma_all --use-white-noise'
+run_and_log 'uv run lalm run clotho --model gemma3n --save-attn --attn-run-name gemma_all'
+run_and_log 'uv run lalm run clotho --model qwen2_5-omni --save-attn --attn-run-name qwen2_5-omni_all --use-white-noise'
+run_and_log 'uv run lalm run clotho --model qwen2_5-omni --save-attn --attn-run-name qwen2_5-omni_all'
 
-run_and_log 'uv run -m src.utils.attention_plot --root /app/outputs/gemma3n_with_noise/mmau-pro/attn/gemma_all --workers 10'
-run_and_log 'uv run -m src.utils.attention_plot --root /app/outputs/gemma3n/mmau-pro/attn/gemma_all --workers 10'
-run_and_log 'uv run -m src.utils.attention_plot --root /app/outputs/qwen2_5-omni_with_noise/mmau-pro/attn/qwen2_5-omni_all --workers 10'
-run_and_log 'uv run -m src.utils.attention_plot --root /app/outputs/qwen2_5-omni/mmau-pro/attn/qwen2_5-omni_all --workers 10'
+# run_and_log 'uv run lalm run mmau-pro --model gemma3n --save-attn --attn-run-name gemma_all --use-white-noise'
+# run_and_log 'uv run lalm run mmau-pro --model gemma3n --save-attn --attn-run-name gemma_all'
+# run_and_log 'uv run lalm run mmau-pro --model qwen2_5-omni --save-attn --attn-run-name qwen2_5-omni_all --use-white-noise'
+# run_and_log 'uv run lalm run mmau-pro --model qwen2_5-omni --save-attn --attn-run-name qwen2_5-omni_all'
+
+# run_and_log 'uv run -m src.utils.attention_plot --root ./outputs/gemma3n_with_noise/mmau-pro/attn/gemma_all --workers 10'
+# run_and_log 'uv run -m src.utils.attention_plot --root ./outputs/gemma3n/mmau-pro/attn/gemma_all --workers 10'
+# run_and_log 'uv run -m src.utils.attention_plot --root ./outputs/qwen2_5-omni_with_noise/mmau-pro/attn/qwen2_5-omni_all --workers 10'
+# run_and_log 'uv run -m src.utils.attention_plot --root ./outputs/qwen2_5-omni/mmau-pro/attn/qwen2_5-omni_all --workers 10'
+
+# run_and_log 'uv run -m src.utils.attention_plot --root ./outputs/gemma3n_with_noise/clotho/attn/gemma_all --workers 10'
+# run_and_log 'uv run -m src.utils.attention_plot --root ./outputs/gemma3n/clotho/attn/gemma_all --workers 10'
+# run_and_log 'uv run -m src.utils.attention_plot --root ./outputs/qwen2_5-omni_with_noise/clotho/attn/qwen2_5-omni_all --workers 10'
+# run_and_log 'uv run -m src.utils.attention_plot --root ./outputs/qwen2_5-omni/clotho/attn/qwen2_5-omni_all --workers 10'

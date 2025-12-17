@@ -35,7 +35,10 @@ INFERENCE_PROJECT = ROOT / "envs" / "inference"
 EVALUATION_PROJECT = ROOT / "envs" / "evaluation"
 DEFAULT_MODELS = ("gemma3n", "qwen2_5-omni", "qwen3-omni")
 
-app = typer.Typer(help="Unified launcher for lalm_bench benchmarks.")
+app = typer.Typer(
+    help="Unified launcher for lalm_bench benchmarks. "
+    "Always run via `uv run --project envs/<inference|evaluation> python cli.py <command>`."
+)
 
 
 class Benchmark(str, Enum):

@@ -40,11 +40,8 @@ datasets>=4.0.0           # 데이터셋 로더
 # uv 설치 (아직 설치 안 했다면)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 루트 환경 동기화
+# 프로젝트 루트에서 envs 동기화
 cd /home/jemin/lalm_bench
-uv sync
-
-# 전용 가상환경 준비
 uv sync --project envs/inference
 uv sync --project envs/evaluation
 ```
@@ -61,16 +58,16 @@ bash scripts/download_datasets.sh
 
 ### 3. 전체 벤치마크 실행
 
-Typer CLI(엔트리포인트 `lalm`)를 사용합니다. `--model` 옵션을 생략하면 기본 모델 3종(Gemma3N, Qwen2.5-Omni, Qwen3-Omni)을 순차 실행합니다.
+CLI(`cli.py`)를 사용합니다. `--model` 옵션을 생략하면 기본 모델 3종(Gemma3N, Qwen2.5-Omni, Qwen3-Omni)을 순차 실행합니다.
 
 ```bash
 # 모든 모델 대상으로 Clotho + MMAU-Pro 전체 파이프라인 실행
-uv run lalm run clotho
-uv run lalm run mmau-pro
+uv run --project envs/inference python cli.py run clotho
+uv run --project envs/inference python cli.py run mmau-pro
 
 # 특정 모델만 실행 (예: Gemma3N)
-uv run lalm run clotho --model gemma3n
-uv run lalm run mmau-pro --model gemma3n
+uv run --project envs/inference python cli.py run clotho --model gemma3n
+uv run --project envs/inference python cli.py run mmau-pro --model gemma3n
 ```
 
 각 모델의 결과는 `./outputs/{MODEL}/result_{벤치마크}.txt`에 저장됩니다.
@@ -86,9 +83,9 @@ uv run lalm run mmau-pro --model gemma3n
 
 | 목적 | 명령 |
 |------|------|
-| 전체 파이프라인 | `uv run lalm run <benchmark> [--model MODEL]` |
-| Inference만 | `uv run lalm inference <benchmark> [--model MODEL]` |
-| Evaluation만 | `uv run lalm eval <benchmark> [--model MODEL]` |
+| 전체 파이프라인 | `uv run --project envs/inference python cli.py run <benchmark> [--model MODEL]` |
+| Inference만 | `uv run --project envs/inference python cli.py inference <benchmark> [--model MODEL]` |
+| Evaluation만 | `uv run --project envs/evaluation python cli.py eval <benchmark> [--model MODEL]` |
 
 - `<benchmark>`: `clotho` 또는 `mmau-pro`
 - `--model`을 생략하면 `gemma3n`, `qwen2_5-omni`, `qwen3-omni` 순으로 실행
@@ -98,13 +95,13 @@ uv run lalm run mmau-pro --model gemma3n
 
 ```bash
 # Gemma3N으로 Clotho 전체 파이프라인 실행
-uv run lalm run clotho --model gemma3n
+uv run --project envs/inference python cli.py run clotho --model gemma3n
 
 # 모든 기본 모델로 MMAU-Pro inference만 실행
-uv run lalm inference mmau-pro
+uv run --project envs/inference python cli.py inference mmau-pro
 
 # qwen3-omni 결과를 이용해 Clotho 평가만 수행
-uv run lalm eval clotho --model qwen3-omni
+uv run --project envs/evaluation python cli.py eval clotho --model qwen3-omni
 ```
 
 ## 🔍 어텐션 시각화
@@ -119,7 +116,7 @@ uv run python visualization.py --prompt "Test" --layers 0 1 --limit-samples 1 --
 
 ### 어텐션 수집
 - `--save-attn`, `--attn-layers`, `--attn-run-name` 옵션을 Inference 명령에 붙이면 배치 중 어텐션을 저장합니다.
-- 예: `uv run lalm inference clotho --model gemma3n --save-attn`, `uv run lalm run mmau-pro --model qwen3-omni --save-attn --attn-run-name debug`.
+- 예: `uv run --project envs/inference python cli.py inference clotho --model gemma3n --save-attn`, `uv run --project envs/inference python cli.py run mmau-pro --model qwen3-omni --save-attn --attn-run-name debug`.
 - 출력은 `./outputs/{MODEL}/{benchmark}/attn/{run_name}/sample_{idx}` 아래 `attn.npy`, `tokens.json`, `meta.json`으로 확인합니다.
 
 ---
@@ -183,7 +180,7 @@ export HF_TOKEN=your_hf_token_here
 docker compose up -d
 
 # 컨테이너 내부에서 명령 실행
-docker compose exec lalm_bench uv run lalm run clotho --model gemma3n
+docker compose exec lalm_bench uv run --project envs/inference python cli.py run clotho --model gemma3n
 
 # 컨테이너 종료
 docker compose down
@@ -213,6 +210,10 @@ docker compose down
 ---
 
 ## 🔧 고급 설정
+
+### 실행 환경 (envs) 구조
+
+2개의 독립적인 실행 환경(`inference`, `evaluation`)을 사용하는 이유와 버전 관리에 대한 자세한 내용은 [`docs/envs.md`](docs/envs.md)를 참조하세요.
 
 ### 커스텀 환경 설정
 

@@ -12,39 +12,20 @@ import matplotlib
 
 matplotlib.use("Agg")  # 비-GUI 백엔드 강제 (멀티프로세스 안전)
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
 import numpy as np
-import warnings
 
 
 # 한자 지원 폰트 설정
 def _setup_cjk_font():
-    """한자(CJK) 문자를 지원하는 폰트를 찾아서 설정"""
-    cjk_fonts = [
-        "Noto Sans CJK SC",
-        "Noto Sans CJK TC",
-        "Noto Sans CJK JP",
-        "Noto Sans CJK KR",
-        "Droid Sans Fallback",
-        "WenQuanYi Micro Hei",
-        "WenQuanYi Zen Hei",
-        "AR PL UMing CN",
-        "AR PL UKai CN",
+    """폰트 설정"""
+    plt.rcParams["font.family"] = "sans-serif"
+    plt.rcParams["font.sans-serif"] = [
+        "Noto Sans KR",
+        "DejaVu Sans",
+        "Arial",
+        "sans-serif",
     ]
-
-    available_fonts = {f.name for f in fm.fontManager.ttflist}
-
-    for font_name in cjk_fonts:
-        if font_name in available_fonts:
-            plt.rcParams["font.sans-serif"] = [font_name] + plt.rcParams[
-                "font.sans-serif"
-            ]
-            return
-
-    # 한자 폰트를 찾지 못한 경우 경고 무시
-    warnings.filterwarnings(
-        "ignore", category=UserWarning, message=".*Glyph.*missing from font.*"
-    )
+    plt.rcParams["axes.unicode_minus"] = False
 
 
 _setup_cjk_font()
@@ -63,9 +44,13 @@ def limited_tokens(tokens: Sequence[str]) -> Tuple[List[int], List[str]]:
 
 
 def plot_attention_map(
-    matrix: np.ndarray, tokens: Sequence[str], title: str, output_path: Path
+    matrix: np.ndarray,
+    tokens: Sequence[str],
+    title: str,
+    output_path: Path,
+    scale: float = 1.0,
 ) -> None:
-    data = np.nan_to_num(matrix, nan=0.0, posinf=0.0, neginf=0.0)
+    data = np.nan_to_num(matrix, nan=0.0, posinf=0.0, neginf=0.0) * float(scale)
 
     # 토큰 개수에 맞춰 이미지 크기 동적 조절 (토큰당 최소 0.25인치 확보)
     n_tokens = len(tokens)
@@ -93,7 +78,11 @@ def plot_attention_map(
 
 
 def plot_layer_grid(
-    layers: np.ndarray, tokens: Sequence[str], title_prefix: str, output_path: Path
+    layers: np.ndarray,
+    tokens: Sequence[str],
+    title_prefix: str,
+    output_path: Path,
+    scale: float = 1.0,
 ) -> None:
     count = layers.shape[0]
     cols = min(3, count)
@@ -109,7 +98,9 @@ def plot_layer_grid(
         if layer_idx >= count:
             ax.axis("off")
             continue
-        data = np.nan_to_num(layers[layer_idx], nan=0.0, posinf=0.0, neginf=0.0)
+        data = np.nan_to_num(
+            layers[layer_idx], nan=0.0, posinf=0.0, neginf=0.0
+        ) * float(scale)
         im = ax.imshow(data, cmap="viridis")
         ax.set_xticks(idx)
         ax.set_xticklabels(labels, rotation=90, fontsize=6)
@@ -132,6 +123,7 @@ def save_sample_plots(
     sample_dir: Path,
     sample_id: str,
     img_format: str = "jpg",
+    scale: float = 1.0,
 ) -> None:
     arrays = [np.asarray(attn, dtype=np.float32) for attn in attentions]
     stacked = np.stack(arrays, axis=0)
@@ -142,6 +134,7 @@ def save_sample_plots(
             tokens,
             title=f"{sample_id} · Layer {layer_idx}",
             output_path=sample_dir / f"layer_{layer_idx:02d}.{img_format}",
+            scale=scale,
         )
 
     mean_matrix = stacked.mean(axis=0)
@@ -150,11 +143,15 @@ def save_sample_plots(
         tokens,
         title=f"{sample_id} · Layer mean",
         output_path=sample_dir / f"layer_mean.{img_format}",
+        scale=scale,
     )
 
 
 def render_sample_from_disk(
-    sample_dir: Path, img_format: str = "jpg", overwrite: bool = False
+    sample_dir: Path,
+    img_format: str = "jpg",
+    overwrite: bool = False,
+    scale: float = 1.0,
 ) -> None:
     """Load previously saved attention bundle and materialize plot files."""
 
@@ -191,6 +188,7 @@ def render_sample_from_disk(
             tokens,
             title=f"{sample_id} · Layer {layer_number}",
             output_path=out_file,
+            scale=scale,
         )
 
     mean_path = sample_dir / f"layer_mean.{img_format}"
@@ -200,14 +198,19 @@ def render_sample_from_disk(
             tokens,
             title=f"{sample_id} · Layer mean",
             output_path=mean_path,
+            scale=scale,
         )
 
 
-def _render_sample_worker(args: Tuple[Path, str, bool]) -> Tuple[str, str | None]:
+def _render_sample_worker(
+    args: Tuple[Path, str, bool, float],
+) -> Tuple[str, str | None]:
     """Worker function for parallel rendering."""
-    sample_dir, img_format, overwrite = args
+    sample_dir, img_format, overwrite, scale = args
     try:
-        render_sample_from_disk(sample_dir, img_format=img_format, overwrite=overwrite)
+        render_sample_from_disk(
+            sample_dir, img_format=img_format, overwrite=overwrite, scale=scale
+        )
         return (sample_dir.name, None)
     except FileNotFoundError as exc:
         return (sample_dir.name, str(exc))
@@ -218,6 +221,7 @@ def render_attention_run(
     img_format: str = "jpg",
     overwrite: bool = False,
     workers: int | None = None,
+    scale: float = 1.0,
 ) -> None:
     """Render plots for every sample_* directory inside the provided root path."""
 
@@ -236,7 +240,7 @@ def render_attention_run(
         return
 
     max_workers = workers or min(os.cpu_count() or 4, len(valid_dirs))
-    tasks = [(d, img_format, overwrite) for d in valid_dirs]
+    tasks = [(d, img_format, overwrite, scale) for d in valid_dirs]
 
     print(f"[INFO] Rendering {len(valid_dirs)} samples with {max_workers} workers...")
 
@@ -278,6 +282,12 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Number of parallel workers (default: CPU count).",
     )
+    parser.add_argument(
+        "--scale",
+        type=float,
+        default=1.0,
+        help="Intensity scale factor applied to attention values before plotting.",
+    )
     return parser.parse_args()
 
 
@@ -288,6 +298,7 @@ def main() -> None:
         img_format=args.img_format,
         overwrite=args.overwrite,
         workers=args.workers,
+        scale=args.scale,
     )
 
 

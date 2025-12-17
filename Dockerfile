@@ -6,7 +6,7 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu|http://mirror.kakao.com/ubuntu|g'
     sed -i 's|http://security.ubuntu.com/ubuntu|http://mirror.kakao.com/ubuntu|g' /etc/apt/sources.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates curl wget git ffmpeg unzip p7zip-full neovim openjdk-11-jre-headless \
+    ca-certificates curl wget git ffmpeg unzip p7zip-full neovim openjdk-11-jre-headless fonts-noto fonts-noto-cjk fonts-noto-color-emoji\
     libnvtoolsext1 cuda-nvtx-12-9 && \
     rm -rf /var/lib/apt/lists/* && apt-get clean
 

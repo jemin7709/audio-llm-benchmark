@@ -62,6 +62,7 @@ dependencies = [
     "torchvision>=0.22.0",
     "tqdm>=4.67.1",
     "transformers>=4.51.1",
+    "typer>=0.20.0",
     "typing-extensions>=4.10",
     "watchfiles>=1.1.1",
     "wheel>=0.45.1",
