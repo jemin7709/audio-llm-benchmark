@@ -26,9 +26,10 @@ from tqdm import tqdm
 from transformers import (
     set_seed,
 )
-from models import load_model
+from src.models import load_model
 from src.utils.attention_io import default_run_name, save_attention_bundle
 from src.utils.attention_plot import save_sample_plots
+from src.utils.paths import detect_repo_root, normalize_output_path, resolve_repo_file
 
 seed = 42
 
@@ -149,7 +150,8 @@ def generate_predictions(
 
     noise_path: Optional[str] = None
     if use_white_noise:
-        candidate = Path("white-noise-358382.mp3")
+        root = detect_repo_root()
+        candidate = resolve_repo_file("white-noise-358382.mp3", root)
         if not candidate.exists():
             raise FileNotFoundError(f"White noise file not found: {candidate}")
         noise_path = str(candidate)
@@ -272,8 +274,8 @@ def main():
     parser.add_argument(
         "--output_json_path",
         type=str,
-        default="/app/outputs/clotho/predictions.json",
-        help="File to save predictions and references.",
+        default="outputs/clotho",
+        help="Directory to save predictions.json and related files.",
     )
     parser.add_argument(
         "--sample_size",
@@ -310,6 +312,10 @@ def main():
     # Device selection removed; rely on default behavior
 
     args, _ = parser.parse_known_args()
+
+    # Normalize output path relative to repo root
+    root = detect_repo_root()
+    args.output_json_path = str(normalize_output_path(args.output_json_path, root))
 
     # Expand a single directory-level '*' in the path (e.g., snapshots/*/clotho.zip)
     def _expand_single_star_dir(path_pattern: str) -> str:

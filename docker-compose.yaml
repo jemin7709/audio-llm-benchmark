@@ -6,7 +6,7 @@ services:
     ipc: host
     environment:
       HF_TOKEN: ${HF_TOKEN}
-      PYTHONPATH: src
+      PYTHONPATH: /app
       UV_LINK_MODE: copy
     volumes:
       - venv_hailo_jemin:/app/.venv

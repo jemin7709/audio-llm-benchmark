@@ -194,7 +194,7 @@ docker compose down
 ### 주요 설정
 
 - **GPU**: 기본값으로 4개 GPU 할당 (`docker-compose.yaml` 수정으로 변경 가능)
-- **PYTHONPATH**: `src` 디렉토리로 자동 설정
+- **PYTHONPATH**: 프로젝트 루트(`/app`)로 자동 설정
 - **캐시**: HuggingFace 캐시를 Docker 볼륨에 저장하여 지속성 보장
 
 ---
@@ -211,6 +211,36 @@ docker compose down
 | MMAU-Pro evaluation만 | `./outputs/{MODEL}/result_mmau_pro_evaluation.txt` |
 | 에러 로그 (Inference) | `./outputs/{MODEL}/*_infer.stderr.log` |
 | 에러 로그 (Evaluation) | `./outputs/{MODEL}/*_eval.stderr.log` |
+
+---
+
+## 📂 디렉토리 구조 및 정책
+
+### 데이터/출력 디렉토리
+
+프로젝트는 다음 3가지 표준 디렉토리를 사용합니다:
+
+| 디렉토리 | 역할 | 예시 |
+|---------|------|------|
+| `data/` | 사용자 제공 입력 데이터 (벤치마크 데이터셋 등) | `data/clotho-v2/`, `data/mmau-pro/` |
+| `outputs/` | 재현 가능한 벤치마크 결과물 | `outputs/gemma3n/clotho/predictions.json`, `outputs/qwen3-omni/result_mmau_pro.txt` |
+| `temp/` | 캐시 및 중간 산출물 (기본 gitignore) | `temp/cache/`, 로컬 테스트 산출물 |
+
+**규칙**:
+- CLI/스크립트 상대경로(`--output-root outputs` 등)는 **프로젝트 루트 기준**으로 자동 정규화됩니다.
+- 어디서 실행하든(루트/서브디렉토리/도커) 경로 해석이 동일합니다.
+- `data/` 디렉토리는 수동으로 만들거나 스크립트를 통해 다운로드합니다.
+
+**예시**:
+```bash
+# 모든 명령이 프로젝트 루트 기준으로 outputs 디렉토리 사용
+uv run --project envs/inference python cli.py run clotho
+# → 결과: <repo_root>/outputs/gemma3n/clotho/predictions.json 등
+
+# 절대경로도 지원
+uv run --project envs/inference python cli.py run clotho --output-root /tmp/custom_outputs
+# → 결과: /tmp/custom_outputs/gemma3n/clotho/predictions.json 등
+```
 
 ---
 

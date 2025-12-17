@@ -16,9 +16,10 @@ from tqdm import tqdm
 from transformers import (
     set_seed,
 )
-from models import load_model
+from src.models import load_model
 from src.utils.attention_io import default_run_name, save_attention_bundle
 from src.utils.attention_plot import save_sample_plots
+from src.utils.paths import detect_repo_root, normalize_output_path, resolve_repo_file
 
 warnings.simplefilter(
     "ignore"
@@ -233,7 +234,8 @@ def generate_responses_with_audio(
 
     noise_path: Optional[str] = None
     if use_white_noise:
-        candidate = Path("white-noise-358382.mp3")
+        root = detect_repo_root()
+        candidate = resolve_repo_file("white-noise-358382.mp3", root)
         if not candidate.exists():
             raise FileNotFoundError(f"White noise file not found: {candidate}")
         noise_path = str(candidate)
@@ -267,7 +269,7 @@ def generate_responses_with_audio(
             else:
                 audio_src = os.path.join(base_dir, ap_norm) if base_dir else ap_norm
 
-        resolved_audio = noise_path or audio_src
+        resolved_audio = noise_path if noise_path else audio_src
         conversation = build_conversation(question_text, resolved_audio)
         text_out = model.generate(conversation)
         outputs.append(text_out)
@@ -379,7 +381,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default="./",
+        default="outputs/mmau-pro",
         help="Output directory to store results",
     )
     parser.add_argument(
@@ -431,6 +433,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args, _ = parse_args()
+
+    # Normalize output path relative to repo root
+    root = detect_repo_root()
+    args.output = str(normalize_output_path(args.output, root))
+
     attention_config = None
     if args.save_attn:
         run_name = args.attn_run_name or default_run_name()

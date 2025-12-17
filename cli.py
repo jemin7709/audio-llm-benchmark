@@ -11,25 +11,12 @@ from typing import Callable, Dict, List, Optional
 
 import typer
 
+from src.utils.paths import detect_repo_root
 
-def _detect_root() -> Path:
-    env_override = os.environ.get("LALM_BENCH_ROOT")
-    candidates = []
-    if env_override:
-        candidates.append(Path(env_override).expanduser())
-    candidates.append(Path.cwd())
-    candidates.append(Path(__file__).resolve().parent)
-    for candidate in candidates:
-        resolved = candidate.resolve()
-        if (resolved / "envs").exists():
-            return resolved
-    raise typer.BadParameter(
-        "프로젝트 루트를 찾을 수 없습니다. "
-        "프로젝트 루트에서 명령을 실행하거나 LALM_BENCH_ROOT를 설정하세요."
-    )
-
-
-ROOT = _detect_root()
+try:
+    ROOT = detect_repo_root()
+except RuntimeError as e:
+    raise typer.BadParameter(str(e)) from e
 SRC_DIR = ROOT / "src"
 INFERENCE_PROJECT = ROOT / "envs" / "inference"
 EVALUATION_PROJECT = ROOT / "envs" / "evaluation"
