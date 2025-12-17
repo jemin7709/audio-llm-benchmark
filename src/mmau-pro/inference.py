@@ -235,9 +235,9 @@ def generate_responses_with_audio(
     noise_path: Optional[str] = None
     if use_white_noise:
         root = detect_repo_root()
-        candidate = resolve_repo_file("white-noise-358382.mp3", root)
+        candidate = resolve_repo_file("assets/noise/white-noise-358382.mp3", root)
         if not candidate.exists():
-            raise FileNotFoundError(f"White noise file not found: {candidate}")
+            raise FileNotFoundError(f"White noise file not found: {candidate}. Please ensure assets/noise/white-noise-358382.mp3 exists.")
         noise_path = str(candidate)
         print(f"Using white noise file for all samples: {noise_path}")
 

@@ -8,11 +8,11 @@
 노이즈가 포함된 오디오와 원본 오디오 예측값의 유사도를 비교합니다.
 
 ```bash
-uv run python experiments/similarity/audio_similarity/calculate_similarity.py
+uv run python experiments/similarity/audio_similarity/calculate_similarity.py [--noise-file PATH] [--audio-file PATH] [--output PATH]
 ```
 
-**입력**: 예측 Parquet 파일 (실행 디렉토리 내부 경로 참조)
-**출력**: `similarity_results.json`, `predictions_with_audio.parquet`, `predictions_with_noise.parquet`
+**입력**: 예측 Parquet 파일 (기본값: `data/artifacts/similarity/audio_similarity/`)
+**출력**: `data/artifacts/similarity/audio_similarity/` 아래 `similarity_results.json`, `predictions_with_audio.parquet`, `predictions_with_noise.parquet`
 
 ---
 
@@ -20,11 +20,11 @@ uv run python experiments/similarity/audio_similarity/calculate_similarity.py
 Clotho-v2 데이터셋의 참조 캡션 유사도 및 아웃라이어를 분석합니다.
 
 ```bash
-uv run python experiments/similarity/clotho_ref_similarity/similarity.py
+uv run python experiments/similarity/clotho_ref_similarity/similarity.py --split development [--output-dir PATH]
 ```
 
-**입력**: Clotho 데이터셋 분할 파일
-**출력**: CSV/JSON 형식의 유사도 통계 및 아웃라이어 목록
+**입력**: Clotho 데이터셋 분할 파일 (`--split`: development, validation, evaluation)
+**출력**: `data/artifacts/similarity/clotho_ref_similarity/` 아래 CSV/JSON 형식의 유사도 통계 및 아웃라이어 목록
 
 ---
 

@@ -6,7 +6,7 @@ fi
 
 if [ ! -d "${HF_HOME:-${HOME}/.cache/huggingface}/hub/datasets--woongvy--clotho-v2.1/" ]; then
     echo "Downloading Clotho dataset"
-    uv run /app/src/utils/clotho_download.py -t || true
+    uv run --project /app/envs/inference /app/src/utils/clotho_download.py -t || true
     cd ${HF_HOME:-${HOME}/.cache/huggingface}/hub/datasets--woongvy--clotho-v2.1/snapshots/*/
 
     unzip -n ./clotho.zip || true
@@ -28,7 +28,7 @@ cd /app
 
 if [ ! -d "${HF_HOME:-${HOME}/.cache/huggingface}/hub/datasets--gamma-lab-umd--MMAU-Pro/" ]; then
     echo "Downloading MMAU-Pro dataset"
-    uv run /app/src/utils/mmau-pro_download.py -t || true
+    uv run --project /app/envs/inference /app/src/utils/mmau-pro_download.py -t || true
     cd ${HF_HOME:-${HOME}/.cache/huggingface}/hub/datasets--gamma-lab-umd--MMAU-Pro/snapshots/*/
 
     unzip -n ./data.zip || true

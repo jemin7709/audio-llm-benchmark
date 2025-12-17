@@ -20,6 +20,10 @@ services:
           ignore:
             - .venv
             - outputs
+            - data/
+            - temp/
+            - "*.parquet"
+            - "*.mp3"
     deploy:
       resources:
         reservations:

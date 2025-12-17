@@ -18,17 +18,19 @@
 - **GPU**: NVIDIA GPU (docker-compose.yaml에서 4개 GPU 기본 설정)
 - **시스템**: Linux/Mac
 
-### 주요 의존성
+### 실행 환경별 주요 의존성
 
-```
-torch>=2.8.0              # PyTorch 프레임워크
-torchaudio>=2.8.0         # 오디오 처리
-transformers>=4.57.1      # HuggingFace 모델
-aac-metrics>=0.6.0        # 평가 메트릭
-datasets>=4.0.0           # 데이터셋 로더
-```
+**`envs/inference`** (추론):
+- `transformers>=4.51.1` (최신 버전)
+- `vllm==0.10.2` (고속 추론 서버)
+- `torch>=2.7.0`, `torchaudio>=2.7.0`
 
-자세한 의존성은 `pyproject.toml` 참조.
+**`envs/evaluation`** (평가):
+- `transformers==4.42.4` (구버전 고정, 호환성)
+- `aac-metrics>=0.6.0` (평가 메트릭)
+- `sentence-transformers>=5.1.2` (임베딩)
+
+자세한 정보는 [`docs/envs.md`](docs/envs.md)를 참조하세요.
 
 ---
 
@@ -36,45 +38,43 @@ datasets>=4.0.0           # 데이터셋 로더
 
 ### 1. 환경 설정
 
-```bash
-# uv 설치 (아직 설치 안 했다면)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+프로젝트 루트에서 두 실행 환경을 동기화합니다:
 
-# 프로젝트 루트에서 envs 동기화
-cd /home/jemin/lalm_bench
+```bash
 uv sync --project envs/inference
 uv sync --project envs/evaluation
-```
-
-### 2. 데이터셋 다운로드
-
-```bash
-# 모든 데이터셋 다운로드
-bash scripts/download_datasets.sh
 ```
 
 > **주의**: HuggingFace 인증 토큰이 필요합니다.
 > `~/.cache/huggingface/hub/`에 저장되거나 환경변수 `HF_TOKEN` 설정 필요.
 
-### 3. 전체 벤치마크 실행
+### 2. 전체 벤치마크 실행
 
 CLI(`cli.py`)를 사용합니다. `--model` 옵션을 생략하면 기본 모델 3종(Gemma3N, Qwen2.5-Omni, Qwen3-Omni)을 순차 실행합니다.
 
 ```bash
-# 모든 모델 대상으로 Clotho + MMAU-Pro 전체 파이프라인 실행
+# 전체 파이프라인 (Inference + Evaluation)
 uv run --project envs/inference python cli.py run clotho
 uv run --project envs/inference python cli.py run mmau-pro
 
-# 특정 모델만 실행 (예: Gemma3N)
+# 특정 모델 실행 (예: Gemma3N)
 uv run --project envs/inference python cli.py run clotho --model gemma3n
-uv run --project envs/inference python cli.py run mmau-pro --model gemma3n
 ```
 
-각 모델의 결과는 `./outputs/{MODEL}/result_{벤치마크}.txt`에 저장됩니다.
+결과는 `./outputs/{MODEL}/result_{벤치마크}.txt`에 저장됩니다.
 
-## 🗂️ 보조 실험 & 분석
-- 어텐션 시각화, 예측 유사도 비교, Clotho 참조 유사도 분석, 자동 루브릭 생성 등의 보조 실험 스크립트는 `experiments/` 디렉토리에 위치합니다.
-- 실행은 `uv run python experiments/<area>/<script>.py` 형태로 통일하며, 각 실험별 상세 입출력 경로 및 옵션은 [`experiments/README.md`](experiments/README.md)를 참조하세요.
+## 🗂️ 보조 실험 & 분석 (사이드 프로젝트)
+
+> **메인 벤치마크 vs 실험**: 메인 벤치마크(`run`, `inference`, `eval` 커맨드)는 **재현 가능성/지원 범위**를 보장합니다. 반면 `experiments/` 내 스크립트는 **분석/검증용**이며, 비보장 범주입니다.
+
+어텐션 시각화, 예측 유사도 비교, Clotho 참조 유사도 분석, 자동 루브릭 생성 등의 실험 스크립트는 `experiments/` 디렉토리에 위치하며, 산출물은 `data/artifacts/` 아래에 저장됩니다:
+
+```bash
+uv run python experiments/<area>/<script>.py [options]
+# 결과 → data/artifacts/<area>/...
+```
+
+각 실험별 상세 옵션 및 입출력은 [`experiments/README.md`](experiments/README.md)를 참조하세요.
 
 ---
 
@@ -105,20 +105,24 @@ uv run --project envs/inference python cli.py inference mmau-pro
 uv run --project envs/evaluation python cli.py eval clotho --model qwen3-omni
 ```
 
-## 🔍 어텐션 시각화
+## 🔍 어텐션 시각화 (사이드 프로젝트)
 
-`experiments/attention/visualization.py`를 실행하면 Gemma3N의 레이어별 어텐션을 이미지·NPY·JSON 형태로 저장할 수 있습니다.
+`experiments/attention/visualization.py`를 실행하면 Gemma3N의 레이어별 어텐션을 이미지·NPY·JSON 형태로 저장합니다:
 
 ```bash
-uv run python experiments/attention/visualization.py --prompt "Test" --layers 0 1 --limit-samples 1 --output-dir outputs/attn/smoke
+uv run python experiments/attention/visualization.py --prompt "Test" --layers 0 1 --limit-samples 1 --output-dir data/artifacts/attention/smoke
 ```
 
-결과물은 `outputs/attn/{run_name}/{sample_id}/` 및 `outputs/attn/{run_name}/global_*` 위치에 생성됩니다.
+결과물은 `data/artifacts/attention/{run_name}/{sample_id}/` 위치에 생성됩니다.
 
-### 어텐션 수집
-- `--save-attn`, `--attn-layers`, `--attn-run-name` 옵션을 Inference 명령에 붙이면 배치 중 어텐션을 저장합니다.
-- 예: `uv run --project envs/inference python cli.py inference clotho --model gemma3n --save-attn`, `uv run --project envs/inference python cli.py run mmau-pro --model qwen3-omni --save-attn --attn-run-name debug`.
-- 출력은 `./outputs/{MODEL}/{benchmark}/attn/{run_name}/sample_{idx}` 아래 `attn.npy`, `tokens.json`, `meta.json`으로 확인합니다.
+### 메인 벤치마크에서 어텐션 수집
+메인 Inference 실행 중 어텐션을 저장하려면 아래 옵션을 사용합니다:
+
+```bash
+uv run --project envs/inference python cli.py inference clotho --model gemma3n --save-attn --attn-run-name my_run
+```
+
+출력: `./outputs/{MODEL}/{benchmark}/attn/{run_name}/sample_{idx}/` 아래 `attn.npy`, `tokens.json`, `meta.json`
 
 ---
 
@@ -333,7 +337,7 @@ export HF_TOKEN=your_token_here
 
 ## 📞 지원
 
-자세한 내용은 `scripts/README.md`를 참조하세요.
+자세한 내용은 [`docs/envs.md`](docs/envs.md)와 각 실험 디렉토리의 README를 참조하세요.
 
 ---
 

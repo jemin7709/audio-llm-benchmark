@@ -151,9 +151,9 @@ def generate_predictions(
     noise_path: Optional[str] = None
     if use_white_noise:
         root = detect_repo_root()
-        candidate = resolve_repo_file("white-noise-358382.mp3", root)
+        candidate = resolve_repo_file("assets/noise/white-noise-358382.mp3", root)
         if not candidate.exists():
-            raise FileNotFoundError(f"White noise file not found: {candidate}")
+            raise FileNotFoundError(f"White noise file not found: {candidate}. Please ensure assets/noise/white-noise-358382.mp3 exists.")
         noise_path = str(candidate)
         print(
             f"Generating predictions for {len(data)} samples using white noise file: {noise_path}"

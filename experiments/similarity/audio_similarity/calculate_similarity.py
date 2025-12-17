@@ -11,9 +11,10 @@ from scipy.spatial.distance import cosine
 from sentence_transformers import SentenceTransformer
 
 PROJECT_DIR = Path(__file__).resolve().parent
-DEFAULT_NOISE_FILE = PROJECT_DIR / "predictions_with_noise.parquet"
-DEFAULT_AUDIO_FILE = PROJECT_DIR / "predictions_with_audio.parquet"
-DEFAULT_OUTPUT_FILE = PROJECT_DIR / "similarity_results.json"
+ARTIFACTS_DIR = PROJECT_DIR.parent.parent.parent.parent / "data" / "artifacts" / "similarity" / "audio_similarity"
+DEFAULT_NOISE_FILE = ARTIFACTS_DIR / "predictions_with_noise.parquet"
+DEFAULT_AUDIO_FILE = ARTIFACTS_DIR / "predictions_with_audio.parquet"
+DEFAULT_OUTPUT_FILE = ARTIFACTS_DIR / "similarity_results.json"
 
 
 def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
