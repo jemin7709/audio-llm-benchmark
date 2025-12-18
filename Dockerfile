@@ -26,5 +26,5 @@ COPY . .
 # Set Python path
 ENV PYTHONPATH=/app
 
-ENTRYPOINT ["bash", "-c", "scripts/install_vllm.sh; scripts/download_datasets.sh; exec \"$@\"", "bash"]
+ENTRYPOINT ["bash", "-c", "scripts/download_datasets.sh; exec \"$@\"", "bash"]
 CMD ["bash"]
